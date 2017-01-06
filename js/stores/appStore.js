@@ -41,6 +41,7 @@ const basicAuthState = require('../../app/common/state/basicAuthState')
 const extensionState = require('../../app/common/state/extensionState')
 const aboutNewTabState = require('../../app/common/state/aboutNewTabState')
 const aboutHistoryState = require('../../app/common/state/aboutHistoryState')
+const paymentState = require('../../app/common/state/paymentState')
 const windowState = require('../../app/common/state/windowState')
 
 const webtorrent = require('../../app/browser/webtorrent')
@@ -499,6 +500,7 @@ const handleAppAction = (action) => {
       }
       appState = aboutNewTabState.setSites(appState, action)
       appState = aboutHistoryState.setHistory(appState, action)
+      appState = paymentState.setPublisherLocation(appState, ledger.locations)
       break
     case appConstants.APP_REMOVE_SITE:
       appState = appState.set('sites', siteUtil.removeSite(appState.get('sites'), action.siteDetail, action.tag))

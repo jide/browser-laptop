@@ -1002,6 +1002,8 @@ class Main extends ImmutableComponent {
                 settings={this.props.appState.get('settings')}
                 noScriptIsVisible={noScriptIsVisible}
                 menubarVisible={customTitlebar.menubarVisible}
+                allSiteSettings={allSiteSettings}
+                publisherLocation={this.props.appState.get('publisherLocation') || new Immutable.Map()}
               />
               <div className='topLevelEndButtons'>
                 <div className={cx({

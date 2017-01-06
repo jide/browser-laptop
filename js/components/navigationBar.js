@@ -5,6 +5,7 @@
 const React = require('react')
 const Immutable = require('immutable')
 const ImmutableComponent = require('./immutableComponent')
+const tldjs = require('tldjs')
 
 const cx = require('../lib/classSet')
 const Button = require('./button')
@@ -32,6 +33,7 @@ class NavigationBar extends ImmutableComponent {
     this.onReload = this.onReload.bind(this)
     this.onReloadLongPress = this.onReloadLongPress.bind(this)
     this.onNoScript = this.onNoScript.bind(this)
+    this.onAuthorizePublisher = this.onAuthorizePublisher.bind(this)
   }
 
   get activeFrame () {
@@ -110,6 +112,8 @@ class NavigationBar extends ImmutableComponent {
   componentDidMount () {
     ipc.on(messages.SHORTCUT_ACTIVE_FRAME_BOOKMARK, () => this.onToggleBookmark())
     ipc.on(messages.SHORTCUT_ACTIVE_FRAME_REMOVE_BOOKMARK, () => this.onToggleBookmark())
+    this.enabledPublisher
+    this.shouldShowAddPublisherButton
   }
 
   get showNoScriptInfo () {
@@ -120,11 +124,52 @@ class NavigationBar extends ImmutableComponent {
     windowActions.setNoScriptVisible(!this.props.noScriptIsVisible)
   }
 
+  get hostPattern () {
+    const getDomain = tldjs.getDomain(this.props.location)
+    return `https?://${getDomain}`
+  }
+
+  get enabledPublisher () {
+    const hostSettings = this.props.allSiteSettings.get(this.hostPattern)
+    return hostSettings && hostSettings.get('ledgerPayments') !== false
+  }
+
+  get shouldShowAddPublisherButton () {
+    const hostSettings = this.props.allSiteSettings.get(this.hostPattern)
+    const publisherLocation = this.props.publisherLocation
+
+    if (hostSettings && publisherLocation) {
+      const ledgerPaymentsShown = hostSettings.get('ledgerPaymentsShown')
+      const validPublisher = !!publisherLocation.get(this.props.location)
+
+      if (validPublisher && ledgerPaymentsShown !== false) {
+        // Only show publisher icon if autoSuggest option is OFF
+        return !getSetting(settings.AUTO_SUGGEST_SITES)
+      }
+    }
+    return false
+  }
+
+  onAuthorizePublisher () {
+    // if payments disabled, enable it
+    if (!getSetting(settings.AUTO_SUGGEST_SITES)) {
+      appActions.changeSetting(settings.PAYMENTS_ENABLED, true)
+    }
+
+    this.enabledPublisher
+      ? appActions.changeSiteSetting(this.hostPattern, 'ledgerPayments', false)
+      : appActions.changeSiteSetting(this.hostPattern, 'ledgerPayments', true)
+  }
+
   componentDidUpdate (prevProps) {
     if (this.props.noScriptIsVisible && !this.showNoScriptInfo) {
       // There are no blocked scripts, so hide the noscript dialog.
       windowActions.setNoScriptVisible(false)
     }
+    // Left Publisher disabled after inserted on Payments
+    // until the user toggle enabled payment option
+    this.enabledPublisher
+    this.shouldShowAddPublisherButton
   }
 
   render () {
@@ -208,6 +253,7 @@ class NavigationBar extends ImmutableComponent {
         urlbar={this.props.navbar.get('urlbar')}
         onStop={this.onStop}
         menubarVisible={this.props.menubarVisible}
+        noBorderRadius={this.shouldShowAddPublisherButton}
         />
       {
         isSourceAboutUrl(this.props.location)
@@ -215,6 +261,19 @@ class NavigationBar extends ImmutableComponent {
           <span className='browserButton' />
         </div>
         : <div className='endButtons'>
+          {
+            this.shouldShowAddPublisherButton
+            ? <span className={cx({
+              addPublisherButtonContainer: true,
+              authorizedPublisher: this.enabledPublisher
+            })}>
+              <Button iconClass='fa-btc'
+                l10nId='enablePublisher'
+                onClick={this.onAuthorizePublisher}
+              />
+            </span>
+            : null
+          }
           {
             !this.showNoScriptInfo
             ? null
